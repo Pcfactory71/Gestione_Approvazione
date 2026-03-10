@@ -72,7 +72,7 @@ def genera_pdf(file_originale, esito, note, timbro_path):
 st.set_page_config(page_title="Resistor Web App", layout="centered")
 st.title("📝 Approvazione Documenti")
 
-uploaded_file = st.file_uploader("Trascina qui il file (JPG/PNG)", type=['jpg', 'jpeg', 'png'])
+uploaded_file = st.file_uploader("Trascina qui il file", type=['jpg', 'jpeg', 'png', 'pdf'])
 
 if uploaded_file:
     st.image(uploaded_file, caption="Anteprima", use_container_width=True)
