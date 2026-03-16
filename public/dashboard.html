@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF Approver - Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="navbar-left">
+      <img src="/logo.png" class="navbar-logo" alt="Logo" onerror="this.style.display='none'">
+      <span class="navbar-brand">PDF Approver</span>
+    </div>
+    <div class="navbar-right">
+      <span class="navbar-user" id="nav-username"></span>
+      <button class="btn-logout" onclick="logout()">Esci</button>
+    </div>
+  </nav>
+
+  <div class="page-content">
+    <div class="container" style="margin-top:28px;">
+
+      <!-- I tab vengono mostrati/nascosti via JS in base al ruolo -->
+      <div class="tabs" id="tab-bar"></div>
+
+      <!-- TAB mittente: invia documento -->
+      <div id="tab-send" style="display:none;">
+        <div class="card">
+          <h2>Invia un documento per approvazione</h2>
+          <div id="upload-alert" class="alert" style="display:none;"></div>
+
+          <div class="form-group">
+            <label for="approver-email">Email dell'approvatore</label>
+            <input type="email" id="approver-email" placeholder="es. responsabile@azienda.it">
+          </div>
+
+          <div class="form-group">
+            <label>File PDF da approvare</label>
+            <div class="file-drop" id="file-drop" onclick="document.getElementById('pdf-file').click()">
+              <input type="file" id="pdf-file" accept=".pdf" onchange="onFileSelected(this)">
+              <div id="file-label">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:32px;height:32px;margin-bottom:8px;display:block;margin-left:auto;margin-right:auto;">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                </svg>
+                <p>Clicca per selezionare un PDF</p>
+                <p style="font-size:0.8rem;margin-top:4px;">(max 20MB)</p>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-full" id="send-btn" onclick="uploadDocument()">
+            Invia per approvazione
+          </button>
+        </div>
+      </div>
+
+      <!-- TAB mittente: i miei documenti inviati -->
+      <div id="tab-sent" style="display:none;">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:12px;">
+            <h2 style="margin:0;">Documenti inviati</h2>
+            <button class="btn btn-secondary" onclick="loadSentDocuments()">↻ Aggiorna</button>
+          </div>
+          <div id="sent-container"><div class="empty">Caricamento...</div></div>
+        </div>
+      </div>
+
+      <!-- TAB approvatore: documenti da lui approvati/rifiutati -->
+      <div id="tab-approvals" style="display:none;">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:12px;">
+            <h2 style="margin:0;">Documenti gestiti</h2>
+            <button class="btn btn-secondary" onclick="loadApprovals()">↻ Aggiorna</button>
+          </div>
+          <!-- Filtro rapido per stato -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;" id="filter-bar">
+            <button class="btn-icon btn-icon-blue active-filter" onclick="filterApprovals('all',this)">Tutti</button>
+            <button class="btn-icon btn-icon-blue" onclick="filterApprovals('pending',this)">In attesa</button>
+            <button class="btn-icon btn-icon-green" onclick="filterApprovals('approved',this)">Approvati</button>
+            <button class="btn-icon btn-icon-red"   onclick="filterApprovals('rejected',this)">Rifiutati</button>
+          </div>
+          <div id="approvals-container"><div class="empty">Caricamento...</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer class="footer">PDF Approver &nbsp;|&nbsp; v1.2.0</footer>
+
+  <script>
+    const token = localStorage.getItem('token');
+    const user  = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!token) window.location.href = '/';
+
+    document.getElementById('nav-username').textContent = `👤 ${user.username || ''}`;
+
+    // ---- Costruisce i tab e la vista iniziale in base al ruolo ----
+    const isSender   = user.role === 'sender'   || user.role === 'admin';
+    const isApprover = user.role === 'approver' || user.role === 'admin';
+
+    const tabBar = document.getElementById('tab-bar');
+
+    // Un utente può avere uno o più tab a seconda del ruolo
+    const tabs = [];
+    if (isSender)   tabs.push({ id: 'send',      label: '📤 Invia documento' });
+    if (isSender)   tabs.push({ id: 'sent',       label: '📋 Documenti inviati' });
+    if (isApprover) tabs.push({ id: 'approvals',  label: '✅ Documenti gestiti' });
+
+    tabs.forEach((t, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'tab-btn' + (i === 0 ? ' active' : '');
+      btn.textContent = t.label;
+      btn.onclick = () => showTab(t.id, btn);
+      tabBar.appendChild(btn);
+    });
+
+    // Mostra il primo tab disponibile
+    if (tabs.length > 0) showTab(tabs[0].id, tabBar.firstChild);
+
+    function showTab(name, activeBtn) {
+      // Nasconde tutti i tab
+      ['tab-send', 'tab-sent', 'tab-approvals'].forEach(id => {
+        document.getElementById(id).style.display = 'none';
+      });
+      // Rimuove active da tutti i bottoni
+      tabBar.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+
+      // Mostra il tab selezionato
+      document.getElementById('tab-' + name).style.display = 'block';
+      if (activeBtn) activeBtn.classList.add('active');
+
+      // Carica i dati del tab appena aperto
+      if (name === 'sent')      loadSentDocuments();
+      if (name === 'approvals') loadApprovals();
+    }
+
+    // ---- Drag & drop sul file-drop ----
+    function onFileSelected(input) {
+      const file = input.files[0];
+      if (file) {
+        document.getElementById('file-label').innerHTML =
+          `<strong style="color:var(--primary)">✅ ${file.name}</strong>
+           <p style="font-size:0.8rem;margin-top:4px;">${(file.size/1024/1024).toFixed(2)} MB</p>`;
+        document.getElementById('file-drop').classList.add('active');
+      }
+    }
+
+    const dropZone = document.getElementById('file-drop');
+    if (dropZone) {
+      dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('active'); });
+      dropZone.addEventListener('dragleave', () => dropZone.classList.remove('active'));
+      dropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        const file = e.dataTransfer.files[0];
+        if (file && file.type === 'application/pdf') {
+          document.getElementById('pdf-file').files = e.dataTransfer.files;
+          onFileSelected(document.getElementById('pdf-file'));
+        }
+      });
+    }
+
+    // ---- Invia documento ----
+    async function uploadDocument() {
+      const approverEmail = document.getElementById('approver-email').value.trim();
+      const file = document.getElementById('pdf-file').files[0];
+      const btn  = document.getElementById('send-btn');
+      if (!approverEmail) { showAlert('upload-alert', 'Inserisci l\'email dell\'approvatore', 'error'); return; }
+      if (!file)          { showAlert('upload-alert', 'Seleziona un file PDF', 'error'); return; }
+
+      btn.innerHTML = '<span class="spinner"></span> Invio...';
+      btn.disabled = true;
+
+      const formData = new FormData();
+      formData.append('pdf', file);
+      formData.append('approverEmail', approverEmail);
+
+      try {
+        const res  = await fetch('/api/documents/upload', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: formData });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        showAlert('upload-alert', '✅ ' + data.message, 'success');
+        document.getElementById('approver-email').value = '';
+        document.getElementById('pdf-file').value = '';
+        document.getElementById('file-label').innerHTML =
+          '<p>Clicca per selezionare un PDF</p><p style="font-size:0.8rem;margin-top:4px;">(max 20MB)</p>';
+        document.getElementById('file-drop').classList.remove('active');
+      } catch (err) {
+        showAlert('upload-alert', '❌ ' + err.message, 'error');
+      } finally {
+        btn.innerHTML = 'Invia per approvazione';
+        btn.disabled = false;
+      }
+    }
+
+    // ---- Carica documenti inviati (mittente) ----
+    async function loadSentDocuments() {
+      const container = document.getElementById('sent-container');
+      container.innerHTML = '<div class="empty">Caricamento...</div>';
+      try {
+        const res  = await fetch('/api/documents/mine', { headers: { 'Authorization': 'Bearer ' + token } });
+        const docs = await res.json();
+        if (!docs.length) { container.innerHTML = '<div class="empty">Nessun documento inviato ancora.</div>'; return; }
+        container.innerHTML = buildDocTable(docs, false);
+      } catch (err) { container.innerHTML = '<div class="empty">Errore nel caricamento.</div>'; }
+    }
+
+    // ---- Variabile per tenere tutti i documenti approvatore (per il filtro) ----
+    let allApprovals = [];
+
+    // ---- Carica documenti gestiti (approvatore) ----
+    async function loadApprovals() {
+      const container = document.getElementById('approvals-container');
+      container.innerHTML = '<div class="empty">Caricamento...</div>';
+      try {
+        const res  = await fetch('/api/documents/my-approvals', { headers: { 'Authorization': 'Bearer ' + token } });
+        allApprovals = await res.json();
+        renderApprovals(allApprovals);
+      } catch (err) { container.innerHTML = '<div class="empty">Errore nel caricamento.</div>'; }
+    }
+
+    function renderApprovals(docs) {
+      const container = document.getElementById('approvals-container');
+      if (!docs.length) {
+        container.innerHTML = '<div class="empty">Nessun documento da mostrare.</div>';
+        return;
+      }
+      // Nella vista approvatore mostriamo anche il mittente
+      container.innerHTML = buildDocTable(docs, true);
+    }
+
+    // ---- Filtro per stato ----
+    function filterApprovals(status, btn) {
+      document.querySelectorAll('#filter-bar .btn-icon').forEach(b => b.classList.remove('active-filter'));
+      btn.classList.add('active-filter');
+      const filtered = status === 'all' ? allApprovals : allApprovals.filter(d => d.status === status);
+      renderApprovals(filtered);
+    }
+
+    // ---- Costruisce l'HTML della tabella (riusabile) ----
+    // showSender=true aggiunge la colonna "Inviato da" (utile per l'approvatore)
+    function buildDocTable(docs, showSender) {
+      const statusMap = { pending: 'In attesa', approved: 'Approvato', rejected: 'Rifiutato' };
+      const badgeMap  = { pending: 'pending', approved: 'approved', rejected: 'rejected' };
+
+      const senderCol = showSender ? '<th>Inviato da</th>' : '';
+
+      return `
+        <div class="table-wrapper">
+          <table class="doc-table">
+            <thead><tr>
+              <th>File</th>
+              ${senderCol}
+              <th>${showSender ? 'Email destinatario' : 'Inviato a'}</th>
+              <th>Stato</th>
+              <th>Data</th>
+              <th>Documenti</th>
+            </tr></thead>
+            <tbody>
+              ${docs.map(d => `
+                <tr>
+                  <td class="col-filename">${d.filename_original}</td>
+                  ${showSender ? `<td>${d.sender_name || '—'}</td>` : ''}
+                  <td>${showSender ? (d.recipient_email || '—') : d.approver_email}</td>
+                  <td><span class="badge badge-${badgeMap[d.status]}">${statusMap[d.status]}</span></td>
+                  <td style="white-space:nowrap;">${new Date(d.created_at).toLocaleDateString('it-IT')}</td>
+                  <td>
+                    <div class="doc-actions">
+                      <button class="btn-icon btn-icon-blue" onclick="viewDoc(${d.id}, false)">📄 Originale</button>
+                      ${d.status === 'approved'
+                        ? `<button class="btn-icon btn-icon-green" onclick="viewDoc(${d.id}, true)">✅ Firmato</button>`
+                        : ''}
+                    </div>
+                  </td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }
+
+    // ---- Scarica e apre un documento in una nuova scheda ----
+    async function viewDoc(id, signed) {
+      const url = `/api/documents/view/${id}${signed ? '/signed' : ''}`;
+      try {
+        const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+        if (!res.ok) { const e = await res.json(); alert('Errore: ' + e.error); return; }
+        window.open(URL.createObjectURL(await res.blob()), '_blank');
+      } catch (err) { alert('Errore nel download: ' + err.message); }
+    }
+
+    function showAlert(id, msg, type) {
+      const el = document.getElementById(id);
+      el.className = `alert alert-${type}`;
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/';
+    }
+  </script>
+</body>
+</html>

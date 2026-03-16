@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF Approver - Setup iniziale</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="navbar-left">
+      <img src="/logo.png" class="navbar-logo" alt="Logo" onerror="this.style.display='none'">
+      <span class="navbar-brand">PDF Approver</span>
+    </div>
+  </nav>
+
+  <div class="login-wrapper">
+    <div class="container-sm" style="width:100%;">
+      <div class="login-title">
+        <h1>⚙️ Setup iniziale</h1>
+        <p>Crea il primo account amministratore</p>
+        <p style="margin-top:8px;font-size:0.8rem;color:var(--danger);">
+          Funziona solo se non esistono ancora utenti nel sistema.
+        </p>
+      </div>
+
+      <div id="alert" class="alert" style="display:none;"></div>
+
+      <div class="card">
+        <h2>Crea account Admin</h2>
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" placeholder="es. admin">
+        </div>
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" placeholder="es. admin@esempio.it">
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="Scegli una password sicura">
+        </div>
+        <button class="btn btn-primary btn-full" onclick="doSetup()">Crea amministratore</button>
+        <p style="margin-top:16px;text-align:center;font-size:0.85rem;">
+          <a href="/">← Torna al login</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">PDF Approver &nbsp;|&nbsp; v1.2.0</footer>
+
+  <script>
+    async function doSetup() {
+      const username = document.getElementById('username').value.trim();
+      const email    = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      if (!username || !email || !password) { showAlert('Tutti i campi sono obbligatori', 'error'); return; }
+      try {
+        const res  = await fetch('/api/auth/setup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, email, password }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        showAlert(data.message + ' Vai al login.', 'success');
+        setTimeout(() => window.location.href = '/', 2500);
+      } catch (err) { showAlert(err.message, 'error'); }
+    }
+    function showAlert(msg, type) {
+      const el = document.getElementById('alert');
+      el.className = `alert alert-${type}`;
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+  </script>
+</body>
+</html>

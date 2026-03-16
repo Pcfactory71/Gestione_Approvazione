@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF Approver - Admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="navbar-left">
+      <img src="/logo.png" class="navbar-logo" alt="Logo" onerror="this.style.display='none'">
+      <span class="navbar-brand">PDF Approver — Admin</span>
+    </div>
+    <div class="navbar-right">
+      <span class="navbar-user" id="nav-username"></span>
+      <button class="btn-logout" onclick="logout()">Esci</button>
+    </div>
+  </nav>
+
+  <div class="page-content">
+    <div class="container" style="margin-top:28px;">
+
+      <div class="tabs">
+        <button class="tab-btn active" onclick="showTab('users')">👥 Utenti</button>
+        <button class="tab-btn"        onclick="showTab('docs')">📋 Documenti</button>
+      </div>
+
+      <!-- TAB: Utenti -->
+      <div id="tab-users">
+        <div class="card">
+          <h2>➕ Crea nuovo utente</h2>
+          <div id="create-alert" class="alert" style="display:none;"></div>
+
+          <!-- form-grid diventa 1 colonna su mobile grazie al CSS -->
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Username</label>
+              <input type="text" id="new-username" placeholder="es. mario.rossi">
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="new-email" placeholder="es. mario@azienda.it">
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" id="new-password" placeholder="Scegli una password">
+            </div>
+            <div class="form-group">
+              <label>Ruolo</label>
+              <select id="new-role">
+                <option value="sender">Mittente (invia documenti)</option>
+                <option value="approver">Approvatore (approva documenti)</option>
+                <option value="admin">Amministratore</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="createUser()">Crea utente</button>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:12px;">
+            <h2 style="margin:0;">👥 Utenti registrati</h2>
+            <button class="btn btn-secondary" onclick="loadUsers()">↻ Aggiorna</button>
+          </div>
+          <div id="users-container"><div class="empty">Caricamento...</div></div>
+        </div>
+      </div>
+
+      <!-- TAB: Documenti -->
+      <div id="tab-docs" style="display:none;">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:12px;">
+            <h2 style="margin:0;">📋 Tutti i documenti</h2>
+            <button class="btn btn-secondary" onclick="loadDocs()">↻ Aggiorna</button>
+          </div>
+          <div id="docs-container"><div class="empty">Caricamento...</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer class="footer">PDF Approver &nbsp;|&nbsp; v1.2.0 &nbsp;|&nbsp; Pannello Admin</footer>
+
+  <script>
+    const token = localStorage.getItem('token');
+    const user  = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!token || user.role !== 'admin') window.location.href = '/';
+    document.getElementById('nav-username').textContent = `👤 ${user.username}`;
+    loadUsers();
+
+    function showTab(name) {
+      document.getElementById('tab-users').style.display = name === 'users' ? 'block' : 'none';
+      document.getElementById('tab-docs').style.display  = name === 'docs'  ? 'block' : 'none';
+      document.querySelectorAll('.tab-btn').forEach((b, i) =>
+        b.classList.toggle('active', (i===0 && name==='users') || (i===1 && name==='docs'))
+      );
+      if (name === 'docs') loadDocs();
+    }
+
+    async function createUser() {
+      const username = document.getElementById('new-username').value.trim();
+      const email    = document.getElementById('new-email').value.trim();
+      const password = document.getElementById('new-password').value;
+      const role     = document.getElementById('new-role').value;
+      try {
+        const res  = await fetch('/api/admin/users', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ username, email, password, role }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        showAlert('create-alert', '✅ ' + data.message, 'success');
+        document.getElementById('new-username').value = '';
+        document.getElementById('new-email').value    = '';
+        document.getElementById('new-password').value = '';
+        loadUsers();
+      } catch (err) { showAlert('create-alert', '❌ ' + err.message, 'error'); }
+    }
+
+    async function loadUsers() {
+      const container = document.getElementById('users-container');
+      try {
+        const res   = await fetch('/api/admin/users', { headers: { 'Authorization': 'Bearer ' + token } });
+        const users = await res.json();
+        if (!users.length) { container.innerHTML = '<div class="empty">Nessun utente.</div>'; return; }
+        const roleLabel = { admin: '🔑 Admin', sender: '📤 Mittente', approver: '✅ Approvatore' };
+        container.innerHTML = `
+          <div class="table-wrapper">
+            <table class="doc-table">
+              <thead><tr><th>Username</th><th>Email</th><th>Ruolo</th><th>Registrato</th><th></th></tr></thead>
+              <tbody>${users.map(u => `
+                <tr>
+                  <td>${u.username}</td>
+                  <td>${u.email}</td>
+                  <td>${roleLabel[u.role] || u.role}</td>
+                  <td style="white-space:nowrap;">${new Date(u.created_at).toLocaleDateString('it-IT')}</td>
+                  <td>${u.id !== user.id
+                    ? `<button class="btn-icon btn-icon-red" onclick="deleteUser(${u.id},'${u.username}')">🗑 Elimina</button>`
+                    : '<span style="color:var(--text-muted);font-size:0.8rem;">(tu)</span>'}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+      } catch (e) { container.innerHTML = '<div class="empty">Errore caricamento.</div>'; }
+    }
+
+    async function deleteUser(id, name) {
+      if (!confirm(`Eliminare l'utente "${name}"? Non può essere annullato.`)) return;
+      try {
+        const res  = await fetch(`/api/admin/users/${id}`, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        loadUsers();
+      } catch (err) { alert('Errore: ' + err.message); }
+    }
+
+    async function loadDocs() {
+      const container = document.getElementById('docs-container');
+      try {
+        const res  = await fetch('/api/admin/documents', { headers: { 'Authorization': 'Bearer ' + token } });
+        const docs = await res.json();
+        if (!docs.length) { container.innerHTML = '<div class="empty">Nessun documento.</div>'; return; }
+        const badgeMap = { pending: 'pending', approved: 'approved', rejected: 'rejected' };
+        const labelMap = { pending: 'In attesa', approved: 'Approvato', rejected: 'Rifiutato' };
+        container.innerHTML = `
+          <div class="table-wrapper">
+            <table class="doc-table">
+              <thead><tr>
+                <th>File</th><th>Mittente</th><th>Approvatore</th><th>Stato</th><th>Data</th><th>Documenti</th><th></th>
+              </tr></thead>
+              <tbody>${docs.map(d => `
+                <tr>
+                  <td class="col-filename">${d.filename_original}</td>
+                  <td>${d.sender_name}</td>
+                  <td>${d.approver_email}</td>
+                  <td><span class="badge badge-${badgeMap[d.status]}">${labelMap[d.status]}</span></td>
+                  <td style="white-space:nowrap;">${new Date(d.created_at).toLocaleDateString('it-IT')}</td>
+                  <td>
+                    <div class="doc-actions">
+                      <button class="btn-icon btn-icon-blue"  onclick="viewDoc(${d.id}, false)">📄 Originale</button>
+                      ${d.status === 'approved' ? `<button class="btn-icon btn-icon-green" onclick="viewDoc(${d.id}, true)">✅ Firmato</button>` : ''}
+                    </div>
+                  </td>
+                  <td>
+                    <button class="btn-icon btn-icon-red" onclick="deleteDoc(${d.id},'${d.filename_original.replace(/'/g,'')}')">🗑 Elimina</button>
+                  </td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+      } catch (e) { container.innerHTML = '<div class="empty">Errore caricamento.</div>'; }
+    }
+
+    async function viewDoc(id, signed) {
+      const url = `/api/documents/view/${id}${signed ? '/signed' : ''}`;
+      try {
+        const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+        if (!res.ok) { const e = await res.json(); alert('Errore: ' + e.error); return; }
+        window.open(URL.createObjectURL(await res.blob()), '_blank');
+      } catch (err) { alert('Errore: ' + err.message); }
+    }
+
+    async function deleteDoc(id, filename) {
+      if (!confirm(`Eliminare definitivamente "${filename}"?\nVerranno cancellati anche i file dal disco.`)) return;
+      try {
+        const res  = await fetch(`/api/admin/documents/${id}`, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        loadDocs();
+      } catch (err) { alert('Errore: ' + err.message); }
+    }
+
+    function showAlert(id, msg, type) {
+      const el = document.getElementById(id);
+      el.className = `alert alert-${type}`;
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/';
+    }
+  </script>
+</body>
+</html>

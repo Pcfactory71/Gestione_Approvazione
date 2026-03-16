@@ -1,0 +1,498 @@
+/* ============================================================
+   style.css — PDF Approver v1.2.0
+   Design responsivo, funziona su desktop, tablet e smartphone
+   ============================================================ */
+
+/* ---- Font Google ---- */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+/* ---- Variabili globali ---- */
+:root {
+  --primary:        #4F46E5;
+  --primary-hover:  #4338CA;
+  --primary-light:  #EEF2FF;
+  --success:        #16a34a;
+  --success-light:  #dcfce7;
+  --danger:         #dc2626;
+  --danger-light:   #fee2e2;
+  --warning:        #d97706;
+  --warning-light:  #fef3c7;
+  --info-light:     #dbeafe;
+
+  --bg:             #f1f5f9;
+  --card-bg:        #ffffff;
+  --text:           #1e293b;
+  --text-muted:     #64748b;
+  --border:         #e2e8f0;
+  --border-focus:   #a5b4fc;
+
+  --radius-sm:  6px;
+  --radius:     10px;
+  --radius-lg:  14px;
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.07);
+  --shadow:     0 4px 16px rgba(0,0,0,0.08);
+  --shadow-lg:  0 8px 32px rgba(0,0,0,0.10);
+
+  --font: 'DM Sans', 'Segoe UI', Arial, sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+/* ---- Reset base ---- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Il contenuto principale si espande, il footer rimane in fondo */
+.page-content { flex: 1; }
+
+a { color: var(--primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ---- Contenitori ---- */
+.container    { max-width: 960px;  margin: 0 auto; padding: 24px 20px; }
+.container-sm { max-width: 500px;  margin: 0 auto; padding: 24px 20px; }
+
+/* ============================================================
+   NAVBAR
+   ============================================================ */
+.navbar {
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  gap: 12px;
+}
+
+.navbar-left  { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.navbar-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+.navbar-logo {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.navbar-brand {
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.navbar-user {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.btn-logout {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 5px 12px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-family: var(--font);
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.btn-logout:hover { background: var(--bg); }
+
+/* ============================================================
+   CARD
+   ============================================================ */
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow);
+}
+
+.card h2 {
+  margin-bottom: 22px;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* ============================================================
+   FORM
+   ============================================================ */
+.form-group { margin-bottom: 18px; }
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  font-family: var(--font);
+  background: var(--card-bg);
+  color: var(--text);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  /* Impedisce all'input di uscire dal contenitore */
+  max-width: 100%;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
+}
+
+.form-group small {
+  display: block;
+  margin-top: 5px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Griglia a 2 colonne per form admin — diventa 1 colonna su mobile */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* ============================================================
+   BOTTONI
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 22px;
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+  text-align: center;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.btn:active { transform: scale(0.98); }
+
+.btn-primary   { background: var(--primary);  color: #fff; }
+.btn-primary:hover   { background: var(--primary-hover); box-shadow: 0 2px 8px rgba(79,70,229,0.25); }
+
+.btn-success   { background: var(--success);  color: #fff; }
+.btn-success:hover   { background: #15803d; }
+
+.btn-danger    { background: var(--danger);   color: #fff; }
+.btn-danger:hover    { background: #b91c1c; }
+
+.btn-secondary { background: var(--card-bg); color: var(--text); border: 1.5px solid var(--border); }
+.btn-secondary:hover { background: var(--bg); }
+
+.btn-full { width: 100%; }
+
+/* Gruppo di bottoni affiancati — si impilano su mobile */
+.btn-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* ============================================================
+   ALERT / MESSAGGI
+   ============================================================ */
+.alert {
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  margin-bottom: 18px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  border-left: 4px solid transparent;
+}
+.alert-success { background: var(--success-light); color: #166534; border-color: var(--success); }
+.alert-error   { background: var(--danger-light);  color: #991b1b; border-color: var(--danger); }
+.alert-info    { background: var(--info-light);    color: #1e40af; border-color: #3b82f6; }
+
+/* ============================================================
+   BADGE STATO
+   ============================================================ */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.badge-pending  { background: var(--warning-light); color: #92400e; }
+.badge-approved { background: var(--success-light); color: #166534; }
+.badge-rejected { background: var(--danger-light);  color: #991b1b; }
+
+/* ============================================================
+   TABELLA DOCUMENTI
+   Scrollabile orizzontalmente su schermi piccoli
+   ============================================================ */
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;          /* scroll orizzontale su mobile */
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.doc-table {
+  width: 100%;
+  min-width: 560px;          /* larghezza minima prima dello scroll */
+  border-collapse: collapse;
+}
+
+.doc-table th {
+  background: var(--bg);
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.doc-table td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.88rem;
+  vertical-align: middle;
+}
+
+.doc-table tr:last-child td { border-bottom: none; }
+.doc-table tr:hover td { background: #fafbff; }
+
+/* Nome file: può andare a capo ma non allarga la tabella all'infinito */
+.doc-table .col-filename {
+  max-width: 200px;
+  word-break: break-all;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+}
+
+/* ============================================================
+   PAGINA LOGIN — centrata verticalmente
+   ============================================================ */
+.login-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+.login-title { text-align: center; margin-bottom: 28px; }
+.login-title h1 { font-size: 1.5rem; font-weight: 600; color: var(--primary); margin-bottom: 6px; }
+.login-title p  { color: var(--text-muted); font-size: 0.9rem; }
+
+/* ============================================================
+   FILE UPLOAD (drag & drop)
+   ============================================================ */
+.file-drop {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 28px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.file-drop:hover,
+.file-drop.active { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+.file-drop input[type="file"] { display: none; }
+
+/* ============================================================
+   TABS
+   ============================================================ */
+.tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 24px;
+  border-bottom: 2px solid var(--border);
+  overflow-x: auto;           /* scroll orizzontale se non ci stanno */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+
+.tab-btn {
+  padding: 10px 18px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-family: var(--font);
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  white-space: nowrap;
+  transition: color 0.15s;
+}
+.tab-btn:hover  { color: var(--text); }
+.tab-btn.active { color: var(--primary); font-weight: 600; border-bottom-color: var(--primary); }
+
+/* ============================================================
+   SPINNER
+   ============================================================ */
+.spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ============================================================
+   EMPTY STATE
+   ============================================================ */
+.empty {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* ============================================================
+   BOTTONI ICONA (visualizza / elimina riga tabella)
+   ============================================================ */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: var(--font);
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+.btn-icon:active { transform: scale(0.96); }
+.btn-icon:hover  { opacity: 0.82; }
+.btn-icon-blue  { background: var(--info-light);    color: #1e40af; }
+.btn-icon-green { background: var(--success-light); color: #166534; }
+.btn-icon-red   { background: var(--danger-light);  color: #991b1b; }
+
+.doc-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+.footer {
+  padding: 18px 24px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  background: var(--card-bg);
+  margin-top: auto;
+}
+
+/* ============================================================
+   IFRAME ANTEPRIMA PDF
+   ============================================================ */
+.pdf-iframe {
+  width: 100%;
+  height: 500px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/* ============================================================
+   RESPONSIVE — tablet (max 768px)
+   ============================================================ */
+@media (max-width: 768px) {
+  .card { padding: 20px 16px; }
+  .container, .container-sm { padding: 16px 14px; }
+
+  /* Griglia form: 1 colonna su tablet */
+  .form-grid { grid-template-columns: 1fr; gap: 0; }
+
+  /* Bottoni affiancati: 1 colonna su tablet */
+  .btn-group { grid-template-columns: 1fr; }
+
+  .navbar { padding: 0 16px; height: 56px; }
+  .navbar-brand { font-size: 0.95rem; }
+  .navbar-user  { max-width: 120px; font-size: 0.8rem; }
+
+  /* Tabella: larghezza minima ridotta */
+  .doc-table { min-width: 480px; }
+}
+
+/* ============================================================
+   RESPONSIVE — smartphone (max 480px)
+   ============================================================ */
+@media (max-width: 480px) {
+  .card { padding: 16px 14px; border-radius: var(--radius); }
+
+  .navbar-user { display: none; }    /* nasconde nome utente, rimane il bottone Esci */
+
+  .login-wrapper { align-items: flex-start; padding-top: 16px; }
+
+  .file-drop { padding: 20px 12px; }
+
+  .tab-btn { padding: 8px 12px; font-size: 0.85rem; }
+
+  /* Anteprima PDF più bassa su smartphone */
+  .pdf-iframe { height: 320px; }
+
+  /* Badge e testo tabella più piccoli */
+  .doc-table th,
+  .doc-table td { padding: 8px 10px; font-size: 0.82rem; }
+}
+
+/* ---- Filtro attivo nella vista approvatore ---- */
+.active-filter {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+  font-weight: 700;
+}

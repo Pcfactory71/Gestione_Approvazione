@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF Approver - Approvazione</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="navbar-left">
+      <img src="/logo.png" class="navbar-logo" alt="Logo" onerror="this.style.display='none'">
+      <span class="navbar-brand">PDF Approver</span>
+    </div>
+    <span style="font-size:0.85rem;color:var(--text-muted);flex-shrink:0;">Approvazione documento</span>
+  </nav>
+
+  <div class="page-content">
+    <div class="container-sm" style="margin-top:32px;">
+
+      <!-- Caricamento -->
+      <div id="loading" class="card" style="text-align:center;padding:48px;">
+        <div class="spinner" style="width:32px;height:32px;border-color:rgba(79,70,229,0.2);border-top-color:var(--primary);border-width:3px;"></div>
+        <p style="margin-top:16px;color:var(--text-muted);">Caricamento documento...</p>
+      </div>
+
+      <!-- Errore -->
+      <div id="error-state" class="card" style="display:none;text-align:center;padding:48px;">
+        <div style="font-size:2.5rem;">❌</div>
+        <h2 style="margin-top:12px;" id="error-title">Link non valido</h2>
+        <p id="error-msg" style="color:var(--text-muted);margin-top:8px;"></p>
+      </div>
+
+      <!-- Già processato -->
+      <div id="done-state" class="card" style="display:none;text-align:center;padding:48px;">
+        <div style="font-size:2.5rem;">ℹ️</div>
+        <h2 style="margin-top:12px;">Documento già processato</h2>
+        <p id="done-msg" style="color:var(--text-muted);margin-top:8px;"></p>
+      </div>
+
+      <!-- Form approvazione -->
+      <div id="approve-form" style="display:none;">
+        <div class="card">
+          <h2>Documento da approvare</h2>
+          <p style="margin-bottom:20px;color:var(--text-muted);">
+            File: <strong id="doc-filename"></strong>
+          </p>
+
+          <div id="form-alert" class="alert" style="display:none;"></div>
+
+          <div class="form-group">
+            <label for="recipient-email">Email a cui inviare il documento</label>
+            <input type="email" id="recipient-email" placeholder="es. richiedente@azienda.it">
+            <small>Il documento (approvato o meno) sarà inviato a questo indirizzo.</small>
+          </div>
+
+          <div class="form-group">
+            <button class="btn btn-secondary btn-full" id="view-btn" onclick="viewPdf(this)">
+              👁️ Visualizza il documento PDF
+            </button>
+          </div>
+
+          <div id="pdf-viewer" style="display:none;margin-bottom:20px;">
+            <iframe id="pdf-frame" class="pdf-iframe"></iframe>
+          </div>
+
+          <!-- btn-group: 2 colonne su desktop, 1 su mobile -->
+          <div class="btn-group">
+            <button class="btn btn-success" id="approve-btn" onclick="decide('approve')">✅ Approva</button>
+            <button class="btn btn-danger"  id="reject-btn"  onclick="decide('reject')">❌ Non approvare</button>
+          </div>
+
+          <p style="margin-top:14px;font-size:0.8rem;color:var(--text-muted);text-align:center;">
+            Approvando: la firma verrà inserita nell'ultima pagina e il file inviato per email.<br>
+            Non approvando: verrà inviata una notifica con il documento originale.
+          </p>
+        </div>
+      </div>
+
+      <!-- Conferma finale -->
+      <div id="confirm-state" style="display:none;" class="card">
+        <div style="text-align:center;padding:24px;">
+          <div style="font-size:2.5rem;" id="confirm-icon"></div>
+          <h2 style="margin-top:14px;" id="confirm-title"></h2>
+          <p id="confirm-msg" style="color:var(--text-muted);margin-top:8px;"></p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer class="footer">PDF Approver &nbsp;|&nbsp; v1.2.0</footer>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+
+    if (!token) {
+      showError('Link non valido', 'Manca il codice di identificazione del documento.');
+    } else {
+      loadDocument();
+    }
+
+    async function loadDocument() {
+      try {
+        const res  = await fetch(`/api/documents/approve/${token}`);
+        const data = await res.json();
+        document.getElementById('loading').style.display = 'none';
+        if (!res.ok) {
+          if (res.status === 400 && data.error.includes('già')) showDone(data.error);
+          else showError('Errore', data.error);
+          return;
+        }
+        document.getElementById('doc-filename').textContent = data.filename;
+        document.getElementById('approve-form').style.display = 'block';
+      } catch (err) {
+        document.getElementById('loading').style.display = 'none';
+        showError('Errore di connessione', 'Impossibile contattare il server.');
+      }
+    }
+
+    function viewPdf(btn) {
+      const viewer = document.getElementById('pdf-viewer');
+      const frame  = document.getElementById('pdf-frame');
+      if (viewer.style.display === 'none') {
+        frame.src = `/api/documents/file/${token}`;
+        viewer.style.display = 'block';
+        btn.textContent = '🙈 Nascondi documento';
+      } else {
+        viewer.style.display = 'none';
+        frame.src = '';
+        btn.textContent = '👁️ Visualizza il documento PDF';
+      }
+    }
+
+    async function decide(action) {
+      const recipientEmail = document.getElementById('recipient-email').value.trim();
+      if (!recipientEmail) { showFormAlert('Inserisci l\'email del destinatario', 'error'); return; }
+      const isApprove = action === 'approve';
+      if (!confirm(isApprove ? 'Confermi l\'approvazione?' : 'Confermi il rifiuto?')) return;
+
+      document.getElementById('approve-btn').disabled = true;
+      document.getElementById('reject-btn').disabled  = true;
+      document.getElementById('approve-btn').innerHTML = '<span class="spinner"></span> Elaborazione...';
+
+      try {
+        const res  = await fetch(`/api/documents/approve/${token}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, recipientEmail }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        document.getElementById('approve-form').style.display = 'none';
+        const s = document.getElementById('confirm-state');
+        s.style.display = 'block';
+        document.getElementById('confirm-icon').textContent  = isApprove ? '✅' : '❌';
+        document.getElementById('confirm-title').textContent = isApprove ? 'Documento approvato!' : 'Documento non approvato';
+        document.getElementById('confirm-msg').textContent   = `${data.message} Una email è stata inviata a ${recipientEmail}.`;
+      } catch (err) {
+        showFormAlert('Errore: ' + err.message, 'error');
+        document.getElementById('approve-btn').disabled = false;
+        document.getElementById('reject-btn').disabled  = false;
+        document.getElementById('approve-btn').innerHTML = '✅ Approva';
+      }
+    }
+
+    function showError(title, msg) {
+      document.getElementById('error-state').style.display = 'block';
+      document.getElementById('loading').style.display     = 'none';
+      document.getElementById('error-title').textContent   = title;
+      document.getElementById('error-msg').textContent     = msg;
+    }
+    function showDone(msg) {
+      document.getElementById('done-state').style.display = 'block';
+      document.getElementById('loading').style.display    = 'none';
+      document.getElementById('done-msg').textContent     = msg;
+    }
+    function showFormAlert(msg, type) {
+      const el = document.getElementById('form-alert');
+      el.className = `alert alert-${type}`;
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+  </script>
+</body>
+</html>

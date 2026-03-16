@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF Approver - Login</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="navbar-left">
+      <img src="/logo.png" class="navbar-logo" alt="Logo" onerror="this.style.display='none'">
+      <span class="navbar-brand">PDF Approver</span>
+    </div>
+  </nav>
+
+  <div class="login-wrapper">
+    <div class="container-sm" style="width:100%;">
+      <div class="login-title">
+        <h1>Accedi</h1>
+        <p>Inserisci le tue credenziali per continuare</p>
+      </div>
+
+      <div id="alert" class="alert" style="display:none;"></div>
+
+      <div class="card">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" placeholder="Inserisci username" autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="Inserisci password" autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary btn-full" id="login-btn" onclick="doLogin()">Accedi</button>
+        <p style="margin-top:16px;text-align:center;font-size:0.85rem;color:var(--text-muted);">
+          Prima volta? <a href="/setup.html">Configura l'amministratore</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">PDF Approver &nbsp;|&nbsp; v1.2.0</footer>
+
+  <script>
+    document.getElementById('password').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
+
+    const existingToken = localStorage.getItem('token');
+    if (existingToken) redirectByRole(JSON.parse(localStorage.getItem('user') || '{}').role);
+
+    function redirectByRole(role) { window.location.href = role === 'admin' ? '/admin.html' : '/dashboard.html'; }
+
+    async function doLogin() {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const btn = document.getElementById('login-btn');
+      if (!username || !password) { showAlert('Inserisci username e password', 'error'); return; }
+      btn.innerHTML = '<span class="spinner"></span> Accesso...';
+      btn.disabled = true;
+      document.getElementById('alert').style.display = 'none';
+      try {
+        const res  = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        redirectByRole(data.user.role);
+      } catch (err) {
+        showAlert(err.message, 'error');
+        btn.innerHTML = 'Accedi';
+        btn.disabled = false;
+      }
+    }
+
+    function showAlert(msg, type) {
+      const el = document.getElementById('alert');
+      el.className = `alert alert-${type}`;
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+  </script>
+</body>
+</html>
